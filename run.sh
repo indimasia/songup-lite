@@ -2,7 +2,7 @@
 # ./run.sh [songs-per-guest]   e.g. ./run.sh 5   (default 3)
 cd "$(dirname "$0")"
 export LIMIT="${1:-3}" PORT="${PORT:-2727}"
-[ -d .venv ] || { python3 -m venv .venv && .venv/bin/pip install -q ytmusicapi; }
+.venv/bin/python -c "import ytmusicapi" 2>/dev/null || { python3 -m venv .venv && .venv/bin/python -m pip install -q ytmusicapi; }
 [ -d node_modules ] || bun install --silent
 if command -v cloudflared >/dev/null; then
   cloudflared tunnel --url "http://localhost:$PORT" >.tunnel.log 2>&1 & TUNNEL=$!
