@@ -1,0 +1,4 @@
+.venv
+songup.db*
+node_modules
+.tunnel.log

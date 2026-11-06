@@ -1,0 +1,64 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>SongUp host</title>
+<link rel=stylesheet href=/style.css>
+<style>
+body{height:100vh;overflow:hidden}
+#app{height:100%;display:grid;grid-template-columns:minmax(0,3fr) minmax(280px,2fr);gap:14px;padding:14px}
+#left,#right{display:flex;flex-direction:column;gap:12px;min-height:0}
+#stage{position:relative;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden}
+#qrbox{display:flex;gap:12px;align-items:center}
+#qrbox img{width:130px;height:130px;background:#fff;border-radius:8px;flex:none}
+#qcard{flex:1;min-height:0;display:flex;flex-direction:column}#queue{overflow:auto;flex:1}
+@media(max-width:800px){body{height:auto;overflow:auto}#app{grid-template-columns:1fr;height:auto}}
+</style>
+<div id=app>
+ <div id=left>
+  <div id=stage>
+   <div id=idle style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+    <div style="font-size:3em;font-weight:700">songup</div><div>Scan the QR code to add songs</div></div>
+   <img id=thumb alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none">
+   <div id=player-wrap style="position:absolute;right:0;bottom:0;width:160px;height:90px"><div id=player></div></div>
+  </div>
+  <progress id=bar value=0 max=1 style="width:100%;height:8px"></progress>
+  <div style="text-align:center"><div id=title style="font-size:1.6em;font-weight:700">No song playing</div><div id=by style="color:#999"></div></div>
+  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+   <button id=start>▶ Start</button><button id=skip>⏭ Skip</button>
+   <button id=shuf>🔀 Shuffle: off</button><button id=lt>Show video</button>
+  </div>
+ </div>
+ <div id=right>
+  <div class="card" id=qrbox><img src=/qr.svg alt=QR><div><h3>Join</h3><div>Scan or open</div><b id=url style="word-break:break-all"></b></div></div>
+  <div class="card" id=qcard><h3>Up next <small id=cnt></small></h3><ul id=queue></ul></div>
+ </div>
+</div>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+const code=location.pathname.split('/')[2]
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))
+const host=a=>fetch('/api/'+a.split('/')[0]+'/'+code+(a.includes('/')?'/'+a.split('/')[1]:''),{method:'POST',body:'{}'})
+fetch('/api/info').then(r=>r.json()).then(i=>url.textContent=i.url)
+let light=localStorage.light!=='0',cur=null,yt=null
+function applyLight(){document.getElementById('player-wrap').style.cssText=light?'position:absolute;right:0;bottom:0;width:160px;height:90px':'position:absolute;inset:0'
+ thumb.style.display=light&&cur?'block':'none';lt.textContent=light?'Show video':'Light mode'}
+lt.onclick=()=>{light=!light;localStorage.light=light?'1':'0';applyLight()}
+skip.onclick=()=>fetch('/api/next/'+code,{method:'POST',body:JSON.stringify({vid:cur&&cur.vid})})
+shuf.onclick=()=>host('shuffle')
+function onYouTubeIframeAPIReady(){yt=new YT.Player('player',{width:'100%',height:'100%',
+ playerVars:{vq:'tiny',autoplay:1,controls:0,disablekb:1,fs:0,rel:0,modestbranding:1},host:'https://www.youtube-nocookie.com',
+ events:{onReady:()=>{if(cur)load()},
+  onStateChange:e=>{if(e.data===0)skip.onclick();if(e.data===1){start.style.display='none';if(light)yt.setPlaybackQuality('tiny')}},
+  onError:()=>{if(cur)skip.onclick()}}})}
+function load(){if(yt&&yt.loadVideoById)yt.loadVideoById(cur.vid)}
+start.onclick=()=>{if(yt&&cur)yt.playVideo();start.style.display='none'}
+const es=new EventSource('/api/events/'+code)
+es.onmessage=e=>{const s=JSON.parse(e.data),n=s.current
+ shuf.textContent='🔀 Shuffle: '+(s.shuffle?'ON':'off');shuf.className=s.shuffle?'on':''
+ cnt.textContent='('+s.queue.length+')'
+ queue.innerHTML=s.queue.map(x=>'<li><img src="https://i.ytimg.com/vi/'+x.vid+'/default.jpg" alt=""><div class=t><b>'+esc(x.title)+'</b><small>'+esc(x.artist)+(x.nick?' · '+esc(x.nick):'')+'</small></div><button onclick="host(\'remove/'+x.id+'\')">✕</button></li>').join('')||'<li><small>Queue is empty</small></li>'
+ if((n&&n.vid)!==(cur&&cur.vid)){cur=n
+  title.textContent=n?n.title:'No song playing';by.textContent=n?n.artist+(n.nick?' · added by '+n.nick:''):''
+  idle.style.display=n?'none':'flex'
+  if(n){thumb.src='https://i.ytimg.com/vi/'+n.vid+'/mqdefault.jpg';load()}else if(yt&&yt.stopVideo)yt.stopVideo()
+  applyLight()}}
+setInterval(()=>{if(yt&&yt.getDuration&&cur){const d=yt.getDuration();if(d)bar.value=yt.getCurrentTime()/d}else bar.value=0},1000)
+applyLight()
+</script>
