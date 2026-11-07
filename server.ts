@@ -19,6 +19,8 @@ let shuffle = false // when on, next song is picked at random
 const clients = new Map<string, Set<ReadableStreamDefaultController>>()
 const enc = new TextEncoder()
 
+setInterval(() => { for (const set of clients.values()) for (const c of set) try { c.enqueue(enc.encode(": ping\n\n")) } catch { set.delete(c) } }, 15000)
+
 const room = (code: string) => db.query("SELECT * FROM rooms WHERE code=?").get(code) as any
 const state = (code: string) => {
     const r = room(code)
@@ -82,10 +84,11 @@ Bun.serve({
                         ctl = c
                         if (!clients.has(code)) clients.set(code, new Set())
                         clients.get(code)!.add(c)
+                        c.enqueue(enc.encode(`: ${" ".repeat(2048)}\n\n`)) // ponytail: pad so Cloudflare tunnel flushes the stream
                         c.enqueue(enc.encode(`data: ${JSON.stringify(state(code))}\n\n`))
                     },
                     cancel() { clients.get(code)?.delete(ctl) },
-                }), { headers: { "content-type": "text/event-stream", "cache-control": "no-cache" } })
+                }), { headers: { "content-type": "text/event-stream", "cache-control": "no-cache, no-transform", "x-accel-buffering": "no" } })
             }
 
             if (action === "add") {
