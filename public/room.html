@@ -14,7 +14,7 @@
  <div class=card><h3>Up next</h3><ul id=queue></ul></div>
 </main>
 <script>
-const code=location.pathname.split('/')[2]
+const code='__CODE__'
 const uid=localStorage.uid||(localStorage.uid=crypto.randomUUID())
 nick.value=localStorage.nick||'';nick.oninput=()=>localStorage.nick=nick.value
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))

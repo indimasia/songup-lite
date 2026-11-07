@@ -32,7 +32,7 @@ body{height:100vh;overflow:hidden}
 </div>
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
-const code=location.pathname.split('/')[2]
+const code='__CODE__'
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))
 const host=a=>fetch('/api/'+a.split('/')[0]+'/'+code+(a.includes('/')?'/'+a.split('/')[1]:''),{method:'POST',body:'{}'})
 fetch('/api/info').then(r=>r.json()).then(i=>url.textContent=i.url)

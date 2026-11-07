@@ -59,14 +59,13 @@ Bun.serve({
 
         if (url.searchParams.get("key") === KEY)
             return new Response(null, { status: 302, headers: { location: p, "set-cookie": `host=${KEY}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400` } })
-        if (p === "/") return Response.redirect(`/room/${CODE}`)
+        const page = async (f: string) => new Response((await Bun.file(f).text()).replace("__CODE__", CODE), { headers: { "content-type": "text/html; charset=utf-8" } })
+        if (p === "/" || p.startsWith("/room/")) return page("public/room.html")
+        if (p === "/host" || p.startsWith("/host/")) return page("public/host.html")
         if (p === "/style.css") return new Response(Bun.file("public/style.css"))
-        if (p === "/host") return Response.redirect(`/host/${CODE}`)
-        if (p.startsWith("/host/")) return new Response(Bun.file("public/host.html"))
-        if (p.startsWith("/room/")) return new Response(Bun.file("public/room.html"))
-        if (p === "/api/info") return json({ code: CODE, url: `${PUBLIC_URL}/room/${CODE}` })
+        if (p === "/api/info") return json({ code: CODE, url: PUBLIC_URL })
         if (p === "/qr.svg")
-            return new Response(await QRCode.toString(`${PUBLIC_URL}/room/${CODE}`, { type: "svg", margin: 1 }), { headers: { "content-type": "image/svg+xml" } })
+            return new Response(await QRCode.toString(PUBLIC_URL, { type: "svg", margin: 1 }), { headers: { "content-type": "image/svg+xml" } })
 
         if (p === "/api/search") {
             const q = url.searchParams.get("q")?.slice(0, 100)
@@ -125,4 +124,9 @@ Bun.serve({
         return new Response("not found", { status: 404 })
     },
 })
-console.log(`\nRoom ${CODE} | limit ${LIMIT} songs/guest\nHost screen: http://localhost:${PORT}/host\nGuests:      ${PUBLIC_URL}/room/${CODE}\nHost via tunnel (keep secret): ${PUBLIC_URL}/host?key=${KEY}\n`)
+console.log(`
+limit ${LIMIT} songs/guest
+Guests: ${PUBLIC_URL}
+Host (local): http://localhost:${PORT}/host
+Host via tunnel (keep secret): ${PUBLIC_URL}/host?key=${KEY}
+`)
