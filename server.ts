@@ -34,8 +34,11 @@ function broadcast(code: string) {
     for (const c of clients.get(code) ?? []) try { c.enqueue(msg) } catch { clients.get(code)!.delete(c) }
 }
 // Host = request from this machine itself. Tunnel (cf-* header) and LAN guests are not host.
+// or: carries the secret host cookie (set by visiting /host?key=KEY, so host works through a tunnel too)
+const KEY = crypto.randomUUID()
 const isHost = (req: Request, srv: any) =>
-    !req.headers.get("cf-connecting-ip") && ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(srv.requestIP(req)?.address)
+    req.headers.get("cookie")?.includes(`host=${KEY}`) ||
+    (!req.headers.get("cf-connecting-ip") && ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(srv.requestIP(req)?.address))
 const setCurrent = (code: string, s: object | null) =>
     db.run("UPDATE rooms SET current=? WHERE code=?", [s && JSON.stringify(s), code])
 
@@ -54,6 +57,8 @@ Bun.serve({
         const p = url.pathname
         let m: RegExpMatchArray | null
 
+        if (url.searchParams.get("key") === KEY)
+            return new Response(null, { status: 302, headers: { location: p, "set-cookie": `host=${KEY}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400` } })
         if (p === "/") return Response.redirect(`/room/${CODE}`)
         if (p === "/style.css") return new Response(Bun.file("public/style.css"))
         if (p === "/host") return Response.redirect(`/host/${CODE}`)
@@ -120,4 +125,4 @@ Bun.serve({
         return new Response("not found", { status: 404 })
     },
 })
-console.log(`\nRoom ${CODE} | limit ${LIMIT} songs/guest\nHost screen: http://localhost:${PORT}/host\nGuests:      ${PUBLIC_URL}/room/${CODE}\n`)
+console.log(`\nRoom ${CODE} | limit ${LIMIT} songs/guest\nHost screen: http://localhost:${PORT}/host\nGuests:      ${PUBLIC_URL}/room/${CODE}\nHost via tunnel (keep secret): ${PUBLIC_URL}/host?key=${KEY}\n`)
