@@ -59,6 +59,8 @@ es.onmessage=e=>{const s=JSON.parse(e.data),n=s.current
   idle.style.display=n?'none':'flex'
   if(n){thumb.src='https://i.ytimg.com/vi/'+n.vid+'/mqdefault.jpg';load()}else if(yt&&yt.stopVideo)yt.stopVideo()
   applyLight()}}
+// quick tunnels buffer SSE, so also poll state
+setInterval(()=>fetch('/api/state/'+code).then(r=>r.text()).then(t=>es.onmessage({data:t})).catch(()=>{}),2000)
 setInterval(()=>{if(yt&&yt.getDuration&&cur){const d=yt.getDuration();if(d)bar.value=yt.getCurrentTime()/d}else bar.value=0},1000)
 applyLight()
 </script>
